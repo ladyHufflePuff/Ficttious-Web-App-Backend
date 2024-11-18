@@ -8,7 +8,6 @@ module.exports = {
         MongoClient.connect(connectionString)
             .then((client) => {
                 dbConnection = client.db('Learn-Hub-App')
-                console.log("database connected")
                 return callback()
             })
             .catch(err => {
