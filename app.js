@@ -2,19 +2,36 @@ const express = require('express');
 const {connectToDb, getDb} = require('./db');
 const { ObjectId } = require('mongodb')
 const cors = require('cors');
+const logger = require('./utilities/logger');
+const morgan = require('morgan');
 
 // init app& middleware
 const app = express();
+const morganFormat = ':method :url :status :response-time ms';
+
 app.use(cors());
 app.use(express.json());
+app.use(morgan(morganFormat,{
+    stream:{
+        write: (message) => {
+            const logObject = {
+                method: message.split(' ')[0],
+                url: message.split(' ')[1],
+                status: message.split(' ')[2],
+                responseTime: message.split(' ')[3]
+            };
+            logger.info(JSON.stringify(logObject));
+        }
+    }
+}));
 
-let db
 
 // database connection
+let db
 connectToDb((err) => {
     if (!err) {
         app.listen(8080, () =>{
-            console.log('app listening on port 8080');
+            logger.info("app listening on port 8080");
         })
         db = getDb();
     }  
@@ -30,10 +47,9 @@ app.param('collectionName', async (req, res, next, collectionName) => {
 app.get('/:collectionName', async (req,res, next) => {
     try{
         const result = await req.collection.find({}).toArray();
-        console.log ("lessons fetched"); 
         res.json(result);
     } catch (err){
-        console.error("error fetching lessons", err.message);
+        logger.error("error fetching lessons", err.message);
         next(err);
     }
 })
@@ -41,17 +57,16 @@ app.get('/:collectionName', async (req,res, next) => {
 app.post('/:collectionName', async (req,res, next) => {
     try{
         const {name, phone, lessons, orderDate} = req.body;
-        const order = await {
+        const order = {
             name: name,
             phone: phone,
             lessons: lessons,
             "order date": orderDate
         };
         const result = await req.collection.insertOne(order);
-        console.log ("order submitted"); 
         res.json(result);
     } catch (err){
-        console.error("error fetching lessons", err.message);
+        logger.error("error fetching lessons", err.message);
         next(err);
     }
 })
@@ -67,11 +82,10 @@ app.put('/:collectionName/:id', async (req,res, next) => {
         if (result.matchedCount === 0) {
             res.status(404).json({ message: 'Lesson not found' });
         } else {
-            console.log('Lesson space updated');
             res.json({ message: 'Lesson space updated successfully', result });
         }
     } catch (err){
-        console.error("error fetching lessons", err.message);
+        logger.error("error fetching lessons", err.message);
         next(err);
     }
 })
