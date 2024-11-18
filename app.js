@@ -1,5 +1,6 @@
 const express = require('express');
 const {connectToDb, getDb} = require('./db');
+const { ObjectId } = require('mongodb')
 const cors = require('cors');
 
 // init app& middleware
@@ -49,6 +50,26 @@ app.post('/:collectionName', async (req,res, next) => {
         const result = await req.collection.insertOne(order);
         console.log ("order submitted"); 
         res.json(result);
+    } catch (err){
+        console.error("error fetching lessons", err.message);
+        next(err);
+    }
+})
+
+app.put('/:collectionName/:id', async (req,res, next) => {
+    try{
+        const lessonId = req.params.id;
+        const { space } = req.body;
+        const result = await req.collection.updateOne(
+            { _id: new ObjectId(lessonId) }, 
+            { $set: { space: space } }      
+        );
+        if (result.matchedCount === 0) {
+            res.status(404).json({ message: 'Lesson not found' });
+        } else {
+            console.log('Lesson space updated');
+            res.json({ message: 'Lesson space updated successfully', result });
+        }
     } catch (err){
         console.error("error fetching lessons", err.message);
         next(err);
