@@ -122,3 +122,40 @@ app.put('/:collectionName/:id', async (req,res, next) => {
         next(err);
     }
 });
+
+
+app.get('/:collectionName/search', async (req, res, next) => {
+    try {
+        const { search } = req.query; // Extract the search term from the query string
+        function escapeRegExp(string)  {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // Escape all special characters
+        };
+        if (!search) {
+            return res.status(205).json({ message: 'Search query is empty. Resetting content.' });
+        }
+        // Determine if the search query is a number or string
+        const isNumber = !isNaN(Number(search));
+        const searchQuery = isNumber ? search.toString() : search;
+
+        // Build search query conditions
+        const searchConditions = [
+            { subject: { $regex: new RegExp(escapeRegExp(searchQuery), 'i') } },
+            { location: { $regex: new RegExp(escapeRegExp(searchQuery), 'i') } },
+            { price: { $eq: parseInt(escapeRegExp(searchQuery), 10) } },
+            { space: { $eq: parseInt(escapeRegExp(searchQuery), 10) } }
+        ];
+
+        // Execute the search
+        const results = await req.collection
+            .find({ $or: searchConditions })
+            .limit(10)
+            .toArray();
+
+        res.json(results);
+    } catch (err) {
+        logger.error("Error during search:", err.message);
+        next(err);
+    }
+});
+
+
